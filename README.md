@@ -28,3 +28,4 @@ src/transform.py    # raw_pool_price -> daily_pool_price_agg  (Week 3)
 sql/schema.sql       # table definitions
 docker-compose.yml    # local Postgres
 ```
+# de-roadmap-aeso
