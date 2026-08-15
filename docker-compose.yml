@@ -1,11 +1,13 @@
+version: '3.8'
+
 services:
   postgres:
-    image: postgres:16
-    container_name: de-roadmap-pg
+    image: postgres:15-alpine
+    container_name: aeso_postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: aeso
+      POSTGRES_USER: aeso_user
+      POSTGRES_PASSWORD: aeso_secure_password
+      POSTGRES_DB: aeso_market_db
     ports:
       - "5432:5432"
     volumes:
