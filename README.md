@@ -29,3 +29,12 @@ sql/schema.sql       # table definitions
 docker-compose.yml    # local Postgres
 ```
 # de-roadmap-aeso
+
+### Ingestion
+- Passed params (start_date, end_date) to get request
+- Parsed and saved the data to json
+
+### Transformation
+- Flattened JSON object with nested array to table using `explode()` 
+- Casted to proper types, (timestamps to a specific format `"yyy-MM-dd HH:mm"`) 
+- Searched for null values, and inconsistincies before saving as a parquet to send to the next step of the pipeline

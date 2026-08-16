@@ -37,7 +37,7 @@ def ingest_pool_prices(start_date: str, end_date: str):
     
     try:
         response = requests.get(POOL_PRICE_URL, headers=headers, params=params, timeout=15)
-        # Raise an exception for HTTP errors (e.g., 401 Unauthorized, 404, 500)
+        # Raise an exception for HTTP errors 
         response.raise_for_status() 
         
         # Parse output to ensure it is valid JSON
