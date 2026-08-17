@@ -1,6 +1,6 @@
 -- Raw staging layer: one row per hour, both datasets already joined at load time
 CREATE TABLE IF NOT EXISTS raw_hourly_grid (
-    datetime_mpt TIMESTAMP NOT NULL,
+    begin_datetime_mpt TIMESTAMP NOT NULL,
     pool_price NUMERIC,
     forecast_pool_price NUMERIC,
     rolling_30day_avg NUMERIC,
@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS raw_hourly_grid (
     forecast_alberta_internal_load NUMERIC,
     ingested_at TIMESTAMP NOT NULL DEFAULT now(),
     source_run_id TEXT NOT NULL,
-    PRIMARY KEY (datetime_mpt)
+    PRIMARY KEY (begin_datetime_mpt)
 );
 
 -- Mart layer: daily aggregates, computed FROM raw_hourly_grid via SQL

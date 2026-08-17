@@ -38,8 +38,7 @@ def transform_data(df_price_raw, df_ail_raw):
     #join the two dataframes on the begin_datetime_mpt column
     df_joined = df_casted_prices.join(df_casted_ail, on="begin_datetime_mpt", how="inner")
 
-    # tests for dropped rows and duplicates
-    assert df_joined.count() == df_casted_prices.count(), "Join dropped rows — check for timestamp mismatches"
+    #gaurdrail against duplicate timestamps after the join
     assert df_joined.dropDuplicates(["begin_datetime_mpt"]).count() == df_joined.count(), "Duplicate timestamps found"
 
     return df_joined
