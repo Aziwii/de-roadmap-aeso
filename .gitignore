@@ -4,4 +4,17 @@ __pycache__/
 .env
 *.log
 .DS_Store
-data/raw/
+
+# Ignore all files in the data directories
+data/raw/*
+data/clean/**
+
+
+# Except the .gitkeep files that preserve the folder structure
+!data/raw/.gitkeep
+!data/clean/.gitkeep
+
+# Ignore local Airflow runtime files, but allow reading inside the dags folder
+airflow/*
+!airflow/dags/
+!airflow/dags/*.py

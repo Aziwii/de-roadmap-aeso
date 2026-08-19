@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, to_timestamp, explode
+import glob
 
 load_dotenv()
 DATA_DIR = os.getenv("DATA_DIR")
@@ -49,8 +50,12 @@ def save_partquet(df_joined, output_path):
     print(f"Successfully saved joined data to: {output_path}")
 
 if __name__ == "__main__":
-    df_price_raw = spark.read.option("multiline", "true").json(f"{DATA_DIR}/raw/raw_pool_prices_2026-08-01_to_2026-08-10.json")
-    df_ail_raw = spark.read.option("multiline", "true").json(f"{DATA_DIR}/raw/raw_ail_2026-08-01_to_2026-08-10.json")
+    #glob for resolving the file parth into a list before handing over to pyspark
+    price_files = glob.glob(f"{DATA_DIR}/raw/raw_pool_prices_*.json")
+    ail_files = glob.glob(f"{DATA_DIR}/raw/raw_ail_*.json")
+
+    df_price_raw = spark.read.option("multiline", "true").json(price_files)
+    df_ail_raw = spark.read.option("multiline", "true").json(ail_files)
 
     df_joined = transform_data(df_price_raw, df_ail_raw)
     save_partquet(df_joined, f"{DATA_DIR}/clean/hourly_grid_performance.parquet")
