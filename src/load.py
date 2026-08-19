@@ -17,8 +17,7 @@ def get_connection():
     )
 
 def build_records(rows, source_run_id):
-    """Function: spark rows + run_id -> list of tuples for the upsert"""
-    #generate the tuple for the INSERT
+    """Function: spark rows + run_id -> list of 8-tuples for the upsert"""
     return [
         (
             row.begin_datetime_mpt, 
@@ -27,7 +26,8 @@ def build_records(rows, source_run_id):
             row.rolling_30day_avg, 
             row.alberta_internal_load, 
             row.forecast_alberta_internal_load, 
-            source_run_id,
+            source_run_id,  # Column 7: created_run_id
+            source_run_id,  # Column 8: updated_run_id
         )
         for row in rows
     ]
@@ -47,19 +47,20 @@ def upsert_records_and_aggregate(conn, records, source_run_id):
             rolling_30day_avg, 
             alberta_internal_load, 
             forecast_alberta_internal_load, 
-            source_run_id
+            created_run_id, 
+            updated_run_id
         )
-        VALUES %s 
+        VALUES %s
         ON CONFLICT (begin_datetime_mpt) DO UPDATE SET
-            pool_price = EXCLUDED.pool_price, 
+            pool_price = EXCLUDED.pool_price,
             forecast_pool_price = EXCLUDED.forecast_pool_price,
             rolling_30day_avg = EXCLUDED.rolling_30day_avg,
             alberta_internal_load = EXCLUDED.alberta_internal_load,
             forecast_alberta_internal_load = EXCLUDED.forecast_alberta_internal_load,
-            source_run_id = EXCLUDED.source_run_id;
+            updated_run_id = EXCLUDED.updated_run_id;
     """
 
-    # Only aggregates dates present in the current payload (prevents full table scan)
+    # Matches SELECT and GROUP BY on DATE(begin_datetime_mpt)
     aggregate_query = """
         INSERT INTO daily_grid_agg (
             grid_date,
@@ -72,20 +73,17 @@ def upsert_records_and_aggregate(conn, records, source_run_id):
             computed_at
         )
         SELECT 
-            DATE_TRUNC('day', begin_datetime_mpt)::DATE AS grid_date,
+            DATE(begin_datetime_mpt) AS grid_date,
             ROUND(AVG(pool_price)::NUMERIC, 2) AS avg_price,
             MIN(pool_price) AS min_price,
             MAX(pool_price) AS max_price,
-            ROUND(STDDEV(pool_price)::NUMERIC, 2) AS stddev_price,
+            ROUND(COALESCE(STDDEV(pool_price), 0)::NUMERIC, 2) AS stddev_price,
             ROUND(AVG(alberta_internal_load)::NUMERIC, 2) AS avg_load,
             COUNT(*) AS hours_reported,
             NOW() AS computed_at
         FROM raw_hourly_grid
-        WHERE DATE_TRUNC('day', begin_datetime_mpt)::DATE IN (
-            SELECT DISTINCT DATE_TRUNC('day', (val).column1::TIMESTAMP)::DATE 
-            FROM (VALUES %s) AS val
-        )
-        GROUP BY 1
+        WHERE DATE(begin_datetime_mpt) IN %s
+        GROUP BY DATE(begin_datetime_mpt)
         ON CONFLICT (grid_date) DO UPDATE SET
             avg_price = EXCLUDED.avg_price,
             min_price = EXCLUDED.min_price,
@@ -98,21 +96,26 @@ def upsert_records_and_aggregate(conn, records, source_run_id):
 
     cur = conn.cursor()
     try:
-        #step 1 - raw upsert
+        # Step 1 - Raw upsert
         execute_values(cur, upsert_query, records)
 
-        #step 2 - daily agg
-        execute_values(cur, aggregate_query, records)
+        # Step 2 - Aggregate for the unique dates in the current payload
+        unique_dates = tuple({r[0].date() for r in records if r[0] is not None})
 
-        #step 3 - verify
+        if unique_dates:
+            cur.execute(aggregate_query, (unique_dates,))
+
+        # Step 3 - Verify using updated_run_id
         cur.execute(
-            "SELECT COUNT(*) FROM raw_hourly_grid WHERE source_run_id = %s",
+            "SELECT COUNT(*) FROM raw_hourly_grid WHERE updated_run_id = %s",
             (source_run_id,)
         )
         loaded_count = cur.fetchone()[0]
-        assert loaded_count == len(records), f"Mismatch: expected {len(records)}, found {loaded_count}"
 
-        #step 4 - commit for atomicity
+        unique_records_count = len({r[0] for r in records})
+        assert loaded_count == unique_records_count, f"Mismatch: expected {unique_records_count}, found {loaded_count}"
+
+        # Step 4 - Commit transaction
         conn.commit()
         return loaded_count
 

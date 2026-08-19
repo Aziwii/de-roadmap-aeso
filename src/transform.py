@@ -37,7 +37,7 @@ def transform_data(df_price_raw, df_ail_raw):
     df_casted_ail = df_casted_ail.drop("begin_datetime_utc")
 
     #join the two dataframes on the begin_datetime_mpt column
-    df_joined = df_casted_prices.join(df_casted_ail, on="begin_datetime_mpt", how="inner")
+    df_joined = df_casted_prices.join(df_casted_ail, on="begin_datetime_mpt", how="full_outer") #dont lose any data, we want to see if there are any gaps in the data
 
     #gaurdrail against duplicate timestamps after the join
     assert df_joined.dropDuplicates(["begin_datetime_mpt"]).count() == df_joined.count(), "Duplicate timestamps found"

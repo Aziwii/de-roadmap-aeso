@@ -17,3 +17,7 @@ FROM (
     FROM v_daily_battery_arbitrage
 ) sub
 WHERE sub.rn <= 10;
+
+select 
+	corr(pool_price, alberta_internal_load) as demand_price_correlation
+from raw_hourly_grid rhg 
