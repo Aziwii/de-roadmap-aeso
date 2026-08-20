@@ -12,8 +12,8 @@ An automated, end to end data pipeline that ingests hourly power prices and grid
 Alberta operates an energy-only electricity market where hourly pool prices fluctuate between **$0.00/MWh** and the market price cap of **$1,500.00/MWh**. This project calculates the potential profits of a 10 MWh grid-scale battery executing automated daily arbitrage (charging during the lowest-priced hours and discharging during peak price spikes).
 
 ### Key Insights
-* **10-Day Simulated Battery Profit:** $10,641.67 (factoring in 90% round-trip efficiency losses).
-* **Demand vs. Price Correlation:** **0.125** - The weak correlation proves that the high demand doesn't trigger price spikes in AB. Supply drops (wind drop-offs and thermal generation outages) drive price volatility. This makes automated price-responsive battery arbitrage essential.
+* **10-Day Simulated Battery Profit:** $9,130.13 (factoring in 90% round-trip efficiency losses).
+* **Demand vs. Price Correlation:** **0.153** - The weak correlation proves that the high demand doesn't trigger price spikes in AB. Supply drops (wind drop-offs and thermal generation outages) drive price volatility. This makes automated price-responsive battery arbitrage essential.
 ---
 
 ## 2. System Architecture

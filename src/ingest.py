@@ -95,6 +95,6 @@ def run_daily_ingestion(target_date: str | None = None) -> None: # str or none a
 
 if __name__ == "__main__":
     # daily ingestion
-    run_daily_ingestion()
+    run_daily_ingestion()  # Defaults to yesterday's date if no date is provided
 
     #we can backfill by doing run_daily_ingestion(target_date="2026-08-15") if needed
