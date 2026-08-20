@@ -28,6 +28,7 @@ def build_records(rows, source_run_id):
             row.forecast_alberta_internal_load, 
             source_run_id,  # Column 7: created_run_id
             source_run_id,  # Column 8: updated_run_id
+            source_run_id,  # Column 9: source_run_id
         )
         for row in rows
     ]
@@ -48,7 +49,8 @@ def upsert_records_and_aggregate(conn, records, source_run_id):
             alberta_internal_load, 
             forecast_alberta_internal_load, 
             created_run_id, 
-            updated_run_id
+            updated_run_id, 
+            source_run_id
         )
         VALUES %s
         ON CONFLICT (begin_datetime_mpt) DO UPDATE SET
