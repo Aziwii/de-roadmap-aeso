@@ -1,22 +1,36 @@
 # Alberta Power Grid (AESO) Market Analytics & Battery Arbitrage Pipeline
 
-An automated, end to end date pipeline that ingests hourly power prices and grid demand from Alberta Electric System Operator (AESO), processes the metrics with PySpark, loads the clean data into a PostgreSQL database, and simulates the profits from a 10 MWh industrial battery using SQL views.
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
+![PySpark](https://img.shields.io/badge/PySpark-3.5-orange?logo=apachespark)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?logo=postgresql)
+![Apache Airflow](https://img.shields.io/badge/Apache%20Airflow-2.x%2F3.x-teal?logo=apacheairflow)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)
+
+An automated, end to end data pipeline that ingests hourly power prices and grid demand from Alberta Electric System Operator (AESO), processes the metrics with PySpark, transforms and loads the clean data into a PostgreSQL database idempotently, and simulates the profits from a 10 MWh industrial battery using SQL views.
 
 ## 1. The Business Case & Analytical Outcome
-Alberta's power market prices fluctuate wildly—sometimes hitting the maximum cap of $1,000/MWh during peak demand. This project models how much money a **10 MW battery storage system** could make by buying power when it’s cheap and selling it back to the grid when prices spike.
+Alberta operates an energy-only electricity market where hourly pool prices fluctuate between **$0.00/MWh** and the market price cap of **$1,500.00/MWh**. This project calculates the potential profits of a 10 MWh grid-scale battery executing automated daily arbitrage (charging during the lowest-priced hours and discharging during peak price spikes).
 
 ### Key Insights
 * **10-Day Simulated Battery Profit:** $10,641.67 (factoring in 90% round-trip efficiency losses).
-* **Demand vs. Price Correlation:** **0.125** - The weak correlation proves that the high demand doesn't trigger price spikes in AB. Supply drop (wind & gen) outages, cause high volitility. This makes automated price-responsive battery arbitrage essential.
+* **Demand vs. Price Correlation:** **0.125** - The weak correlation proves that the high demand doesn't trigger price spikes in AB. Supply drops (wind drop-offs and thermal generation outages) drive price volatility. This makes automated price-responsive battery arbitrage essential.
 ---
 
 ## 2. System Architecture
-```bash
-[AESO API] ---> [ingest.py] ---> [data/raw/ (JSON)]
-|
-[Postgres DB] <--- [load.py] <--- [transform.py (PySpark)] <--- [data/clean/ (Parquet)]
-|
-[v_daily_battery_arbitrage (SQL View)]
+```text
+ ┌──────────────┐     ┌──────────────┐     ┌─────────────────────┐
+ │   AESO API   │ ──> │  ingest.py   │ ──> │   data/raw/ (JSON)  │
+ └──────────────┘     └──────────────┘     └─────────────────────┘
+                                                      │
+                                                      ▼
+ ┌──────────────┐     ┌──────────────┐     ┌─────────────────────┐
+ │ Postgres DB  │ <── │   load.py    │ <── │ transform.py (Spark)│
+ └──────────────┘     └──────────────┘     └─────────────────────┘
+        │                                  (data/clean/ Parquet)
+        ▼
+ ┌───────────────────────────────────────┐
+ │  v_daily_battery_arbitrage (SQL View) │
+ └───────────────────────────────────────┘
 ```
 ### Data Workflow:
 1.  **Ingest:** A modular Python script retrieves historical or hourly prices (Pool Prices) and Alberta Internal load (AIL) from the AESO API.
@@ -28,6 +42,12 @@ Alberta's power market prices fluctuate wildly—sometimes hitting the maximum c
 
 ## 3. Database Schema Design
 The data is modeled into an optimized two-layer analytical schema:
+```text
+raw_hourly_grid (Transactional/Staging Layer)  ───>  daily_grid_agg (Mart/Aggregate Layer)
+                                              │
+                                              ▼
+                             v_daily_battery_arbitrage (Analytical View)
+```
 
 *   **`raw_hourly_grid` (Transactional/Staging Layer):** Stores hour-by-hour pool prices and actual system load.
 *   **`daily_grid_agg` (Mart/Aggregate Layer):** Consolidates daily high, low, average, and standard deviation metrics, along with a reporting completeness audit (`hours_reported`).
@@ -78,8 +98,6 @@ export AIRFLOW_HOME=$(pwd)/airflow
 airflow standalone
 #Note: Log in to http://localhost:8080 using the temporary credentials printed in your terminal or (simple_auth_manager_passwords.json.generated in the airflow folder), activate the aeso_grid_pipeline DAG, and trigger it manually.
 ```
-
-
 
 ## 6. Project Structure
 ```bash
